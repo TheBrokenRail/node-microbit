@@ -1,0 +1,22 @@
+{
+  "name": "node-microbit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheBrokenRail/node-microbit.git"
+  },
+  "author": "TheBrokenRail",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TheBrokenRail/node-microbit/issues"
+  },
+  "homepage": "https://github.com/TheBrokenRail/node-microbit#readme",
+  "dependencies": {
+    "noble": "^1.9.1"
+  }
+}
