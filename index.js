@@ -1,18 +1,41 @@
 const MICROBIT_UART_SERVICE = '6E400001B5A3F393E0A9E50E24DCCA9E';
 const MICROBIT_RX_CHARACTERISTIC = '6E400002B5A3F393E0A9E50E24DCCA9E';
 const MICROBIT_TX_CHARACTERISTIC = '6E400003B5A3F393E0A9E50E24DCCA9E';
+const uid = require('uid');
 
 class MicroBit {
-  constructor(read, write) {
-    this.read = read;
+  constructor(write) {
     this.write = write;
+    this.wait = {};
+  }
+  data(data) {
+    console.log(data);
+    if (data.startsWith('.')) {
+      let command = data.slice(1, data.length - 1);
+      let action = command.split(':')[0];
+      let param = command.split(':')[1];
+      if (action === 'DONE') {
+        for (let id of this.wait) {
+          if (id == param) {
+            wait[id]();
+          }
+        }
+      }
+    }
+  }
+  scroll(data) {
+    let id = uid(16);
+    write('SCROLL:"' + id + '",' + JSON.stringify(data) + ';');
+    return new Promise((resolve, reject) => {
+      this.wait.id = resolve;
+    });
   }
 }
 
 module.exports = {
-  connect = bluetooth => {
+  connect = terminal => {
     return new Promise((resolve, reject) => {
-      if (bluetooth) {
+      if (terminal === 'bluetooth') {
         const noble = require('noble');
         noble.on('stateChange', state => {
           if (state === 'poweredOn') {
@@ -50,7 +73,7 @@ module.exports = {
                     };
                   } else if (characteristics[i].uuid == MICROBIT_TX_CHARACTERISTIC) {
                     let index = 0;
-                    read = data => {
+                    read = callback => {
                       return new Promise((resolveTwo, rejectTwo) => {
                         characteristics[i].read((data, error) => {
                           if (error) {
@@ -58,19 +81,41 @@ module.exports = {
                           }
                           let newData = data.slice(index);
                           index = data.length;
-                          resolveTwo(newData);
+                          resolveTwo(callback(newData));
                         });
                       };
                     };
                   }
                 }
-                resolve(new MicroBit(read, write));
+                let microbit = new MicroBit(write);
+                setInterval(() => {
+                  read(microbit.data);
+                }, 50);
+                resolve(microbit);
               });
             });
           });
         });
       } else {
-        
+        const SerialPort = require('serialport');
+        const port = new SerialPort(terminal, {
+          baudRate: 115200
+        });
+        let write = data => {
+          return new Promise((resolveTwo, rejectTwo) => {
+            port.write(data, error => {
+              if (error) {
+                rejectTwo(error);
+              }
+              resolveTwo();
+            });
+          });
+        };
+        let microbit = new MicroBit(write);
+        port.on('data', data => {
+          microbit.data(data);
+        });
+        resolve(microbit);
       }
     });
   }

@@ -17,6 +17,8 @@
   },
   "homepage": "https://github.com/TheBrokenRail/node-microbit#readme",
   "dependencies": {
-    "noble": "^1.9.1"
+    "noble": "^1.9.1",
+    "serialport": "^6.2.0",
+    "uid": "0.0.2"
   }
 }
