@@ -9,7 +9,7 @@ class MicroBit {
     this.wait = {};
   }
   data(data) {
-    console.log(data);
+    console.log('Data: ' + data);
     if (data.startsWith('.')) {
       let command = data.slice(1, data.length - 1);
       let action = command.split(':')[0];
@@ -25,7 +25,7 @@ class MicroBit {
   }
   scroll(data) {
     let id = uid(16);
-    write('SCROLL:"' + id + '",' + JSON.stringify(data) + ';');
+    this.write('DISPLAY_SCROLL:"' + id + '",' + JSON.stringify(data) + ';');
     return new Promise((resolve, reject) => {
       this.wait.id = resolve;
     });
@@ -33,7 +33,7 @@ class MicroBit {
 }
 
 module.exports = {
-  connect = terminal => {
+  connect: terminal => {
     return new Promise((resolve, reject) => {
       if (terminal === 'bluetooth') {
         const noble = require('noble');
@@ -69,7 +69,7 @@ module.exports = {
                           }
                           resolveTwo();
                         });
-                      };
+                      });
                     };
                   } else if (characteristics[i].uuid == MICROBIT_TX_CHARACTERISTIC) {
                     let index = 0;
@@ -79,11 +79,19 @@ module.exports = {
                           if (error) {
                             rejectTwo(error);
                           }
-                          let newData = data.slice(index);
-                          index = data.length;
-                          resolveTwo(callback(newData));
+                          let newData = data.toString().slice(index);
+                          if (newData.endsWith(';')) {
+                            index = data.length;
+                            let commands = newData.split(';');
+                            for (let i = 0; i < commands.length; i++) {
+                              if (commands[i].startsWith('.')) {
+                                callback(commands[i]);
+                              }
+                            }
+                            resolveTwo();
+                          }
                         });
-                      };
+                      });
                     };
                   }
                 }
@@ -102,18 +110,41 @@ module.exports = {
           baudRate: 115200
         });
         let write = data => {
+          console.log('Write: ' + data);
           return new Promise((resolveTwo, rejectTwo) => {
-            port.write(data, error => {
-              if (error) {
-                rejectTwo(error);
-              }
-              resolveTwo();
-            });
+            let index = 0;
+            let writeChar = char => {
+              port.write(char, error => {
+                if (error) {
+                  rejectTwo(error);
+                }
+                port.drain(() => {
+                  index++;
+                  if (index < data.length) {
+                    setTimeout(() => writeChar(data[index]), 10);
+                  } else {
+                    resolveTwo();
+                  }
+                });
+              });
+            };
+            writeChar(data[index]);
           });
         };
         let microbit = new MicroBit(write);
+        let buffer = '';
         port.on('data', data => {
-          microbit.data(data);
+          if (!data.toString().endsWith(';')) {
+            buffer = buffer + data.toString();
+          } else {
+            let commands = (buffer + data.toString()).split(';');
+            for (let i = 0; i < commands.length; i++) {
+              if (commands[i].startsWith('.') || true) {
+                microbit.data(commands[i] + ';');
+              }
+            }
+            buffer = '';
+          }
         });
         resolve(microbit);
       }
