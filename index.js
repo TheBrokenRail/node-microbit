@@ -10,15 +10,13 @@ class MicroBit {
   }
   data(data) {
     console.log('Data: ' + data);
-    if (data.startsWith('.')) {
-      let command = data.slice(1, data.length - 1);
-      let action = command.split(':')[0];
-      let param = command.split(':')[1];
-      if (action === 'DONE') {
-        for (let id of this.wait) {
-          if (id == param) {
-            wait[id]();
-          }
+    let command = data.slice(0, data.length - 1);
+    let action = command.split(':')[0];
+    let param = command.split(':')[1];
+    if (action === 'DONE') {
+      for (let id of this.wait) {
+        if (id == param) {
+          wait[id]();
         }
       }
     }
@@ -84,9 +82,7 @@ module.exports = {
                             index = data.length;
                             let commands = newData.split(';');
                             for (let i = 0; i < commands.length; i++) {
-                              if (commands[i].startsWith('.')) {
-                                callback(commands[i]);
-                              }
+                              callback(commands[i]);
                             }
                             resolveTwo();
                           }
@@ -112,23 +108,14 @@ module.exports = {
         let write = data => {
           console.log('Write: ' + data);
           return new Promise((resolveTwo, rejectTwo) => {
-            let index = 0;
-            let writeChar = char => {
-              port.write(char, error => {
-                if (error) {
-                  rejectTwo(error);
-                }
-                port.drain(() => {
-                  index++;
-                  if (index < data.length) {
-                    setTimeout(() => writeChar(data[index]), 10);
-                  } else {
-                    resolveTwo();
-                  }
-                });
-              });
-            };
-            writeChar(data[index]);
+            port.write(data, error => {
+              if (error) {
+                rejectTwo(error);
+              }
+              port.drain(() => {
+                resolveTwo();
+              };
+            });
           });
         };
         let microbit = new MicroBit(write);
@@ -139,9 +126,7 @@ module.exports = {
           } else {
             let commands = (buffer + data.toString()).split(';');
             for (let i = 0; i < commands.length; i++) {
-              if (commands[i].startsWith('.') || true) {
-                microbit.data(commands[i] + ';');
-              }
+              microbit.data(commands[i] + ';');
             }
             buffer = '';
           }
